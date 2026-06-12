@@ -98,22 +98,61 @@ fetch("data.json").then(r => r.json()).then(d => {
     lon: d.heat.reduce((a, h) => a + h.lon * h.weight, 0) / d.heat.reduce((a, h) => a + h.weight, 0),
   } : { lat: 39.5, lon: -98.4 };
 
+  // Geographic circle polygon: radius in *miles*, so it scales with the map
+  // instead of staying a fixed pixel size when zooming.
+  function circleCoords(lat, lon, miles, n = 48) {
+    const pts = [];
+    const latScale = miles / 69.0;                                   // mi per deg lat
+    const lonScale = miles / (69.172 * Math.cos(lat * Math.PI / 180)); // mi per deg lon
+    for (let i = 0; i <= n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      pts.push([lon + lonScale * Math.cos(a), lat + latScale * Math.sin(a)]);
+    }
+    return [pts];
+  }
+
+  const R_MIN_MILES = 5, R_MAX_MILES = 25;
+
   function drawMap() {
     const a = Math.min(+lo.value, +hi.value), b = Math.max(+lo.value, +hi.value);
-    const win = d.heat.filter(h => h.date >= dates[a] && h.date <= dates[b]);
     document.getElementById("d-lo").textContent = dates.length ? pretty(dates[a]) : "—";
     document.getElementById("d-hi").textContent = dates.length ? pretty(dates[b]) : "—";
     const f = document.getElementById("fill");
     f.style.left = (100 * a / Math.max(+lo.max, 1)) + "%";
     f.style.width = (100 * (b - a) / Math.max(+lo.max, 1)) + "%";
 
+    // Sum window weights per location
+    const byLoc = new Map();
+    for (const h of d.heat) {
+      if (h.date < dates[a] || h.date > dates[b]) continue;
+      const key = h.lat + "," + h.lon;
+      const cur = byLoc.get(key) || { lat: h.lat, lon: h.lon, w: 0 };
+      cur.w += h.weight;
+      byLoc.set(key, cur);
+    }
+    const locs = [...byLoc.values()];
+    const maxW = Math.max(...locs.map(p => p.w), 1);
+
+    const features = locs.map((p, i) => ({
+      type: "Feature", id: String(i),
+      geometry: {
+        type: "Polygon",
+        coordinates: circleCoords(
+          p.lat, p.lon,
+          R_MIN_MILES + (R_MAX_MILES - R_MIN_MILES) * Math.sqrt(p.w / maxW)),
+      },
+    }));
+
     Plotly.react("map", [{
-      type: "densitymap",
-      lat: win.map(h => h.lat), lon: win.map(h => h.lon), z: win.map(h => h.weight),
-      radius: 42, opacity: .82, hoverinfo: "skip",
-      colorscale: [[0, "rgba(90,169,255,0)"], [.25, "rgba(90,169,255,.55)"],
-                   [.55, "rgba(157,123,255,.8)"], [1, "rgba(255,123,84,.95)"]],
-      showscale: false,
+      type: "choroplethmap",
+      geojson: { type: "FeatureCollection", features },
+      locations: features.map(f2 => f2.id),
+      z: locs.map(p => p.w),
+      zmin: 0, zmax: maxW,
+      colorscale: [[0, "rgba(90,169,255,.45)"], [.5, "rgba(157,123,255,.55)"],
+                   [1, "rgba(255,123,84,.7)"]],
+      marker: { opacity: .6, line: { color: "rgba(90,169,255,.35)", width: 1 } },
+      hoverinfo: "skip", showscale: false,
     }], {
       ...LAYOUT, margin: { t: 0, r: 0, b: 0, l: 0 },
       map: { style: "carto-darkmatter", center, zoom: 5.6 },
