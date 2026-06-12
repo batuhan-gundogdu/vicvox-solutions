@@ -1,0 +1,147 @@
+{
+ "generated_at": "2026-06-12T00:17:17+00:00",
+ "totals": {
+  "comments": 1192,
+  "discussions": 75,
+  "communities": 9,
+  "states": [
+   "AZ"
+  ],
+  "first_date": "2026-06-01",
+  "last_date": "2026-06-11"
+ },
+ "daily": [
+  {
+   "date": "2026-06-01",
+   "state": "AZ",
+   "comments": 1
+  },
+  {
+   "date": "2026-06-05",
+   "state": "AZ",
+   "comments": 7
+  },
+  {
+   "date": "2026-06-06",
+   "state": "AZ",
+   "comments": 9
+  },
+  {
+   "date": "2026-06-07",
+   "state": "AZ",
+   "comments": 1
+  },
+  {
+   "date": "2026-06-08",
+   "state": "AZ",
+   "comments": 31
+  },
+  {
+   "date": "2026-06-09",
+   "state": "AZ",
+   "comments": 88
+  },
+  {
+   "date": "2026-06-10",
+   "state": "AZ",
+   "comments": 147
+  },
+  {
+   "date": "2026-06-11",
+   "state": "AZ",
+   "comments": 908
+  }
+ ],
+ "sources": [
+  {
+   "community": "r/phoenix",
+   "state": "AZ",
+   "place": "Phoenix, AZ",
+   "comments": 512,
+   "discussions": 10,
+   "engagement": 655,
+   "lat": 33.4505,
+   "lon": -112.0783
+  },
+  {
+   "community": "r/Scottsdale",
+   "state": "AZ",
+   "place": "Scottsdale, AZ",
+   "comments": 191,
+   "discussions": 10,
+   "engagement": 263,
+   "lat": 33.4945,
+   "lon": -111.9207
+  },
+  {
+   "community": "r/Tempe",
+   "state": "AZ",
+   "place": "Tempe, AZ",
+   "comments": 113,
+   "discussions": 9,
+   "engagement": 140,
+   "lat": 33.4274,
+   "lon": -111.934
+  },
+  {
+   "community": "r/Tucson",
+   "state": "AZ",
+   "place": "Tucson, AZ",
+   "comments": 110,
+   "discussions": 14,
+   "engagement": 161,
+   "lat": 32.217,
+   "lon": -110.9713
+  },
+  {
+   "community": "r/Flagstaff",
+   "state": "AZ",
+   "place": "Flagstaff, AZ",
+   "comments": 108,
+   "discussions": 9,
+   "engagement": 136,
+   "lat": 35.3577,
+   "lon": -111.7712
+  },
+  {
+   "community": "r/Prescott",
+   "state": "AZ",
+   "place": "Prescott, AZ",
+   "comments": 73,
+   "discussions": 9,
+   "engagement": 99,
+   "lat": 34.5981,
+   "lon": -112.4202
+  },
+  {
+   "community": "r/yuma",
+   "state": "AZ",
+   "place": "Yuma, AZ",
+   "comments": 73,
+   "discussions": 8,
+   "engagement": 89,
+   "lat": 32.7046,
+   "lon": -114.6563
+  },
+  {
+   "community": "r/azpolitics",
+   "state": "AZ",
+   "place": "Arizona",
+   "comments": 11,
+   "discussions": 5,
+   "engagement": 11,
+   "lat": null,
+   "lon": null
+  },
+  {
+   "community": "r/TucsonPolitics",
+   "state": "AZ",
+   "place": "Tucson, AZ",
+   "comments": 1,
+   "discussions": 1,
+   "engagement": 1,
+   "lat": 32.217,
+   "lon": -110.9713
+  }
+ ]
+}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VicVox — Solutions</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #131a2e; --line: #223052;
+    --ink: #e8edf7; --muted: #93a1bd; --accent: #5aa9ff; --accent2: #ffb454;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 48px; }
+  header h1 {
+    margin: 0; font-size: 26px; letter-spacing: .3px;
+    background: linear-gradient(90deg, var(--accent), #9d7bff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { margin: 6px 0 0; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin: 24px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card .num { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .card .lbl { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .8px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 16px 0; }
+  .panel h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 8px 12px; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>VicVox Solutions — Civic Discourse Monitor</h1>
+    <p>Live, aggregated metrics from the VicVox pipeline. Updated automatically after every crawl.</p>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel"><h2>Where the conversation is happening</h2><div id="map" style="height:480px"></div></div>
+  <div class="panel"><h2>Comment volume over time</h2><div id="timeline" style="height:340px"></div></div>
+  <div class="panel"><h2>Most active communities</h2><div id="communities" style="height:420px"></div></div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const LAYOUT = {
+  paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+  font: { color: "#93a1bd", size: 12 },
+  margin: { t: 10, r: 16, b: 40, l: 56 },
+};
+const CONFIG = { displayModeBar: false, responsive: true };
+const fmt = n => n.toLocaleString("en-US");
+
+fetch("data.json").then(r => r.json()).then(d => {
+  const t = d.totals;
+  document.getElementById("cards").innerHTML = [
+    [fmt(t.comments), "Comments analyzed"],
+    [fmt(t.discussions), "Discussions"],
+    [fmt(t.communities), "Communities"],
+    [t.states.join(" · "), "States"],
+    [(t.first_date && t.last_date) ? `${t.first_date} → ${t.last_date}` : "—", "Coverage"],
+  ].map(([n, l]) => `<div class="card"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join("");
+
+  // Map: bubble per locatable community, sized by comment volume
+  const located = d.sources.filter(s => s.lat !== null);
+  Plotly.newPlot("map", [{
+    type: "scattergeo", mode: "markers",
+    lat: located.map(s => s.lat), lon: located.map(s => s.lon),
+    text: located.map(s => `${s.community}<br>${s.place}<br>${fmt(s.comments)} comments · ${fmt(s.engagement)} engagement`),
+    hoverinfo: "text",
+    marker: {
+      size: located.map(s => 8 + 3.2 * Math.sqrt(s.comments)),
+      color: located.map(s => s.engagement),
+      colorscale: [[0, "#5aa9ff"], [1, "#ff7b54"]],
+      line: { color: "#0b1020", width: 1 }, opacity: .85,
+      sizemode: "diameter",
+    },
+  }], { ...LAYOUT, margin: { t: 0, r: 0, b: 0, l: 0 },
+    geo: { scope: "usa", bgcolor: "rgba(0,0,0,0)", landcolor: "#18223c",
+           subunitcolor: "#223052", countrycolor: "#223052", lakecolor: "#0b1020" } }, CONFIG);
+
+  // Timeline: stacked bars by state
+  const states = [...new Set(d.daily.map(r => r.state))];
+  Plotly.newPlot("timeline", states.map((st, i) => {
+    const rows = d.daily.filter(r => r.state === st);
+    return { type: "bar", name: st, x: rows.map(r => r.date), y: rows.map(r => r.comments),
+             marker: { color: ["#5aa9ff", "#9d7bff", "#ffb454", "#54d6a8"][i % 4] } };
+  }), { ...LAYOUT, barmode: "stack", xaxis: { gridcolor: "#1a2440" },
+        yaxis: { gridcolor: "#1a2440", title: { text: "comments" } },
+        legend: { orientation: "h", y: 1.12 } }, CONFIG);
+
+  // Communities: top 15 by comments, engagement overlaid
+  const top = d.sources.slice(0, 15).reverse();
+  Plotly.newPlot("communities", [
+    { type: "bar", orientation: "h", name: "comments",
+      y: top.map(s => s.community), x: top.map(s => s.comments), marker: { color: "#5aa9ff" } },
+    { type: "bar", orientation: "h", name: "engagement (incl. thread depth)",
+      y: top.map(s => s.community), x: top.map(s => s.engagement), marker: { color: "#31415f" } },
+  ], { ...LAYOUT, barmode: "group", margin: { ...LAYOUT.margin, l: 150 },
+       xaxis: { gridcolor: "#1a2440" }, legend: { orientation: "h", y: 1.08 } }, CONFIG);
+
+  document.getElementById("foot").textContent =
+    `Aggregated public-discourse metrics only — no individual-level data is published. Generated ${d.generated_at} by the VicVox pipeline.`;
+});
+</script>
+</body>
+</html>
