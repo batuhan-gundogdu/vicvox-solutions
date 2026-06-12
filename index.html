@@ -27,6 +27,13 @@
   footer { color: var(--muted); font-size: 12.5px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 14px; }
 
   /* Zillow-style dual-handle date range */
+  .maptools { display: flex; justify-content: space-between; align-items: center; padding: 0 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    background: none; border: 0; color: var(--muted); font: inherit;
+    font-size: 13px; padding: 5px 12px; cursor: pointer;
+  }
+  .seg button.on { background: #25314f; color: var(--ink); }
   .rangebar { padding: 6px 18px 14px; }
   .rangebar .dates { display: flex; justify-content: space-between; color: var(--ink); font-size: 13.5px; margin-bottom: 6px; }
   .rangebar .dates b { color: var(--accent); font-weight: 600; }
@@ -59,7 +66,13 @@
   </header>
 
   <div class="panel">
-    <h2>Where the conversation is happening</h2>
+    <div class="maptools">
+      <h2>Where the conversation is happening</h2>
+      <div class="seg" id="mode">
+        <button data-mode="circles" class="on">Mile radius</button>
+        <button data-mode="zcta">ZIP areas</button>
+      </div>
+    </div>
     <div class="rangebar">
       <div class="dates"><span>From <b id="d-lo">—</b></span><span>To <b id="d-hi">—</b></span></div>
       <div class="slider">
@@ -86,9 +99,14 @@ const CONFIG = { displayModeBar: false, responsive: true };
 const fmt = n => n.toLocaleString("en-US");
 const pretty = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-fetch("data.json").then(r => r.json()).then(d => {
+Promise.all([
+  fetch("data.json").then(r => r.json()),
+  fetch("zcta.geojson").then(r => r.json()).catch(() => null),
+  fetch("states.geojson").then(r => r.json()).catch(() => null),
+]).then(([d, zctaGeo, statesGeo]) => {
   // ---- spatial heat with date-range filter ----
-  const dates = [...new Set(d.heat.map(h => h.date))].sort();
+  const dates = [...new Set(
+    d.heat.map(h => h.date).concat((d.state_heat || []).map(h => h.date)))].sort();
   const lo = document.getElementById("r-lo"), hi = document.getElementById("r-hi");
   lo.max = hi.max = Math.max(dates.length - 1, 0);
   hi.value = Math.max(dates.length - 1, 0);
@@ -112,6 +130,19 @@ fetch("data.json").then(r => r.json()).then(d => {
   }
 
   const R_MIN_MILES = 5, R_MAX_MILES = 25;
+  const HEAT_SCALE = [[0, "rgba(90,169,255,.45)"], [.5, "rgba(157,123,255,.55)"],
+                      [1, "rgba(255,123,84,.7)"]];
+  const zctaIds = new Set((zctaGeo?.features || []).map(f2 => f2.id));
+  let mapMode = "circles";
+
+  document.querySelectorAll("#mode button").forEach(btn => {
+    btn.onclick = () => {
+      mapMode = btn.dataset.mode;
+      document.querySelectorAll("#mode button").forEach(
+        b => b.classList.toggle("on", b === btn));
+      drawMap();
+    };
+  });
 
   function drawMap() {
     const a = Math.min(+lo.value, +hi.value), b = Math.max(+lo.value, +hi.value);
@@ -120,43 +151,82 @@ fetch("data.json").then(r => r.json()).then(d => {
     const f = document.getElementById("fill");
     f.style.left = (100 * a / Math.max(+lo.max, 1)) + "%";
     f.style.width = (100 * (b - a) / Math.max(+lo.max, 1)) + "%";
+    const inWin = h => h.date >= dates[a] && h.date <= dates[b];
 
-    // Sum window weights per location
-    const byLoc = new Map();
-    for (const h of d.heat) {
-      if (h.date < dates[a] || h.date > dates[b]) continue;
-      const key = h.lat + "," + h.lon;
-      const cur = byLoc.get(key) || { lat: h.lat, lon: h.lon, w: 0 };
+    // Sum window weights per anchor ZIP
+    const byZip = new Map();
+    for (const h of d.heat.filter(inWin)) {
+      const cur = byZip.get(h.zip) || { zip: h.zip, lat: h.lat, lon: h.lon, w: 0 };
       cur.w += h.weight;
-      byLoc.set(key, cur);
+      byZip.set(h.zip, cur);
     }
-    const locs = [...byLoc.values()];
+    const locs = [...byZip.values()];
     const maxW = Math.max(...locs.map(p => p.w), 1);
+    const traces = [];
 
-    const features = locs.map((p, i) => ({
-      type: "Feature", id: String(i),
-      geometry: {
-        type: "Polygon",
-        coordinates: circleCoords(
-          p.lat, p.lon,
-          R_MIN_MILES + (R_MAX_MILES - R_MIN_MILES) * Math.sqrt(p.w / maxW)),
-      },
-    }));
+    // Statewide wash: zero-anchor-ZIP communities (r/arizona, ...) paint the
+    // whole state, faintly, under the local layer
+    const byState = new Map();
+    for (const h of (d.state_heat || []).filter(inWin)) {
+      byState.set(h.state, (byState.get(h.state) || 0) + h.weight);
+    }
+    if (statesGeo && byState.size) {
+      const states = [...byState.keys()];
+      const maxS = Math.max(...byState.values(), 1);
+      traces.push({
+        type: "choroplethmap", geojson: statesGeo, locations: states,
+        z: states.map(s => byState.get(s)), zmin: 0, zmax: maxS,
+        colorscale: [[0, "rgba(90,169,255,.10)"], [1, "rgba(90,169,255,.28)"]],
+        marker: { line: { color: "rgba(90,169,255,.30)", width: 1 } },
+        hoverinfo: "skip", showscale: false,
+      });
+    }
 
-    Plotly.react("map", [{
-      type: "choroplethmap",
-      geojson: { type: "FeatureCollection", features },
-      locations: features.map(f2 => f2.id),
-      z: locs.map(p => p.w),
-      zmin: 0, zmax: maxW,
-      colorscale: [[0, "rgba(90,169,255,.45)"], [.5, "rgba(157,123,255,.55)"],
-                   [1, "rgba(255,123,84,.7)"]],
-      marker: { opacity: .6, line: { color: "rgba(90,169,255,.35)", width: 1 } },
-      hoverinfo: "skip", showscale: false,
-    }], {
+    if (mapMode === "zcta" && zctaGeo) {
+      const withPoly = locs.filter(p => zctaIds.has(p.zip));
+      const noPoly = locs.filter(p => !zctaIds.has(p.zip));
+      if (withPoly.length) {
+        traces.push({
+          type: "choroplethmap", geojson: zctaGeo,
+          locations: withPoly.map(p => p.zip),
+          z: withPoly.map(p => p.w), zmin: 0, zmax: maxW,
+          colorscale: HEAT_SCALE,
+          marker: { opacity: .75, line: { color: "rgba(90,169,255,.5)", width: 1 } },
+          hoverinfo: "skip", showscale: false,
+        });
+      }
+      // ZIPs without a ZCTA polygon fall back to a small fixed circle
+      for (const p of noPoly) {
+        traces.push(circleTrace([p], maxW, () => 4));
+      }
+    } else {
+      if (locs.length) {
+        traces.push(circleTrace(locs, maxW,
+          p => R_MIN_MILES + (R_MAX_MILES - R_MIN_MILES) * Math.sqrt(p.w / maxW)));
+      }
+    }
+
+    Plotly.react("map", traces, {
       ...LAYOUT, margin: { t: 0, r: 0, b: 0, l: 0 },
       map: { style: "carto-darkmatter", center, zoom: 5.6 },
     }, CONFIG);
+  }
+
+  function circleTrace(locs, maxW, radiusMiles) {
+    const features = locs.map((p, i) => ({
+      type: "Feature", id: String(i),
+      geometry: { type: "Polygon",
+                  coordinates: circleCoords(p.lat, p.lon, radiusMiles(p)) },
+    }));
+    return {
+      type: "choroplethmap",
+      geojson: { type: "FeatureCollection", features },
+      locations: features.map(f2 => f2.id),
+      z: locs.map(p => p.w), zmin: 0, zmax: maxW,
+      colorscale: HEAT_SCALE,
+      marker: { opacity: .6, line: { color: "rgba(90,169,255,.35)", width: 1 } },
+      hoverinfo: "skip", showscale: false,
+    };
   }
   lo.oninput = hi.oninput = drawMap;
   drawMap();
