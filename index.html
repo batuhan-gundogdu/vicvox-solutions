@@ -8,7 +8,7 @@
 <style>
   :root {
     --bg: #0b1020; --panel: #131a2e; --line: #223052;
-    --ink: #e8edf7; --muted: #93a1bd; --accent: #5aa9ff; --accent2: #ffb454;
+    --ink: #e8edf7; --muted: #93a1bd; --accent: #5aa9ff;
   }
   * { box-sizing: border-box; }
   body {
@@ -22,13 +22,33 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   header p { margin: 6px 0 0; color: var(--muted); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin: 24px 0; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .card .num { font-size: 24px; font-weight: 700; color: var(--accent); }
-  .card .lbl { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .8px; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 16px 0; }
   .panel h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 8px 12px; }
   footer { color: var(--muted); font-size: 12.5px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+  /* Zillow-style dual-handle date range */
+  .rangebar { padding: 6px 18px 14px; }
+  .rangebar .dates { display: flex; justify-content: space-between; color: var(--ink); font-size: 13.5px; margin-bottom: 6px; }
+  .rangebar .dates b { color: var(--accent); font-weight: 600; }
+  .slider { position: relative; height: 28px; }
+  .slider .track, .slider .fill {
+    position: absolute; top: 12px; height: 4px; border-radius: 2px; width: 100%;
+  }
+  .slider .track { background: #25314f; }
+  .slider .fill { background: linear-gradient(90deg, var(--accent), #9d7bff); }
+  .slider input[type=range] {
+    position: absolute; width: 100%; top: 0; height: 28px; margin: 0;
+    -webkit-appearance: none; appearance: none; background: none; pointer-events: none;
+  }
+  .slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; pointer-events: auto;
+    width: 18px; height: 18px; border-radius: 50%; cursor: grab;
+    background: #e8edf7; border: 3px solid var(--accent); margin-top: 5px;
+  }
+  .slider input[type=range]::-moz-range-thumb {
+    pointer-events: auto; width: 14px; height: 14px; border-radius: 50%;
+    cursor: grab; background: #e8edf7; border: 3px solid var(--accent);
+  }
 </style>
 </head>
 <body>
@@ -38,11 +58,20 @@
     <p>Live, aggregated metrics from the VicVox pipeline. Updated automatically after every crawl.</p>
   </header>
 
-  <div class="cards" id="cards"></div>
+  <div class="panel">
+    <h2>Where the conversation is happening</h2>
+    <div class="rangebar">
+      <div class="dates"><span>From <b id="d-lo">—</b></span><span>To <b id="d-hi">—</b></span></div>
+      <div class="slider">
+        <div class="track"></div><div class="fill" id="fill"></div>
+        <input type="range" id="r-lo" min="0" max="0" value="0" step="1">
+        <input type="range" id="r-hi" min="0" max="0" value="0" step="1">
+      </div>
+    </div>
+    <div id="map" style="height:520px"></div>
+  </div>
 
-  <div class="panel"><h2>Where the conversation is happening</h2><div id="map" style="height:480px"></div></div>
-  <div class="panel"><h2>Comment volume over time</h2><div id="timeline" style="height:340px"></div></div>
-  <div class="panel"><h2>Most active communities</h2><div id="communities" style="height:420px"></div></div>
+  <div class="panel"><h2>Comment volume over time</h2><div id="timeline" style="height:320px"></div></div>
 
   <footer id="foot"></footer>
 </div>
@@ -55,36 +84,45 @@ const LAYOUT = {
 };
 const CONFIG = { displayModeBar: false, responsive: true };
 const fmt = n => n.toLocaleString("en-US");
+const pretty = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 fetch("data.json").then(r => r.json()).then(d => {
-  const t = d.totals;
-  document.getElementById("cards").innerHTML = [
-    [fmt(t.comments), "Comments analyzed"],
-    [fmt(t.discussions), "Discussions"],
-    [fmt(t.communities), "Communities"],
-    [t.states.join(" · "), "States"],
-    [(t.first_date && t.last_date) ? `${t.first_date} → ${t.last_date}` : "—", "Coverage"],
-  ].map(([n, l]) => `<div class="card"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join("");
+  // ---- spatial heat with date-range filter ----
+  const dates = [...new Set(d.heat.map(h => h.date))].sort();
+  const lo = document.getElementById("r-lo"), hi = document.getElementById("r-hi");
+  lo.max = hi.max = Math.max(dates.length - 1, 0);
+  hi.value = Math.max(dates.length - 1, 0);
 
-  // Map: bubble per locatable community, sized by comment volume
-  const located = d.sources.filter(s => s.lat !== null);
-  Plotly.newPlot("map", [{
-    type: "scattergeo", mode: "markers",
-    lat: located.map(s => s.lat), lon: located.map(s => s.lon),
-    text: located.map(s => `${s.community}<br>${s.place}<br>${fmt(s.comments)} comments · ${fmt(s.engagement)} engagement`),
-    hoverinfo: "text",
-    marker: {
-      size: located.map(s => 8 + 3.2 * Math.sqrt(s.comments)),
-      color: located.map(s => s.engagement),
-      colorscale: [[0, "#5aa9ff"], [1, "#ff7b54"]],
-      line: { color: "#0b1020", width: 1 }, opacity: .85,
-      sizemode: "diameter",
-    },
-  }], { ...LAYOUT, margin: { t: 0, r: 0, b: 0, l: 0 },
-    geo: { scope: "usa", bgcolor: "rgba(0,0,0,0)", landcolor: "#18223c",
-           subunitcolor: "#223052", countrycolor: "#223052", lakecolor: "#0b1020" } }, CONFIG);
+  const center = d.heat.length ? {
+    lat: d.heat.reduce((a, h) => a + h.lat * h.weight, 0) / d.heat.reduce((a, h) => a + h.weight, 0),
+    lon: d.heat.reduce((a, h) => a + h.lon * h.weight, 0) / d.heat.reduce((a, h) => a + h.weight, 0),
+  } : { lat: 39.5, lon: -98.4 };
 
-  // Timeline: stacked bars by state
+  function drawMap() {
+    const a = Math.min(+lo.value, +hi.value), b = Math.max(+lo.value, +hi.value);
+    const win = d.heat.filter(h => h.date >= dates[a] && h.date <= dates[b]);
+    document.getElementById("d-lo").textContent = dates.length ? pretty(dates[a]) : "—";
+    document.getElementById("d-hi").textContent = dates.length ? pretty(dates[b]) : "—";
+    const f = document.getElementById("fill");
+    f.style.left = (100 * a / Math.max(+lo.max, 1)) + "%";
+    f.style.width = (100 * (b - a) / Math.max(+lo.max, 1)) + "%";
+
+    Plotly.react("map", [{
+      type: "densitymap",
+      lat: win.map(h => h.lat), lon: win.map(h => h.lon), z: win.map(h => h.weight),
+      radius: 42, opacity: .82, hoverinfo: "skip",
+      colorscale: [[0, "rgba(90,169,255,0)"], [.25, "rgba(90,169,255,.55)"],
+                   [.55, "rgba(157,123,255,.8)"], [1, "rgba(255,123,84,.95)"]],
+      showscale: false,
+    }], {
+      ...LAYOUT, margin: { t: 0, r: 0, b: 0, l: 0 },
+      map: { style: "carto-darkmatter", center, zoom: 5.6 },
+    }, CONFIG);
+  }
+  lo.oninput = hi.oninput = drawMap;
+  drawMap();
+
+  // ---- timeline ----
   const states = [...new Set(d.daily.map(r => r.state))];
   Plotly.newPlot("timeline", states.map((st, i) => {
     const rows = d.daily.filter(r => r.state === st);
@@ -94,18 +132,11 @@ fetch("data.json").then(r => r.json()).then(d => {
         yaxis: { gridcolor: "#1a2440", title: { text: "comments" } },
         legend: { orientation: "h", y: 1.12 } }, CONFIG);
 
-  // Communities: top 15 by comments, engagement overlaid
-  const top = d.sources.slice(0, 15).reverse();
-  Plotly.newPlot("communities", [
-    { type: "bar", orientation: "h", name: "comments",
-      y: top.map(s => s.community), x: top.map(s => s.comments), marker: { color: "#5aa9ff" } },
-    { type: "bar", orientation: "h", name: "engagement (incl. thread depth)",
-      y: top.map(s => s.community), x: top.map(s => s.engagement), marker: { color: "#31415f" } },
-  ], { ...LAYOUT, barmode: "group", margin: { ...LAYOUT.margin, l: 150 },
-       xaxis: { gridcolor: "#1a2440" }, legend: { orientation: "h", y: 1.08 } }, CONFIG);
-
+  const t = d.totals;
   document.getElementById("foot").textContent =
-    `Aggregated public-discourse metrics only — no individual-level data is published. Generated ${d.generated_at} by the VicVox pipeline.`;
+    `${fmt(t.comments)} comments across ${fmt(t.communities)} communities (${t.states.join(", ")}). ` +
+    `Aggregated public-discourse metrics only — no individual-level data is published. ` +
+    `Generated ${d.generated_at} by the VicVox pipeline.`;
 });
 </script>
 </body>

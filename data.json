@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-06-12T00:17:17+00:00",
+ "generated_at": "2026-06-12T01:49:27+00:00",
  "totals": {
   "comments": 1192,
   "discussions": 75,
@@ -52,96 +52,138 @@
    "comments": 908
   }
  ],
- "sources": [
+ "heat": [
   {
-   "community": "r/phoenix",
-   "state": "AZ",
-   "place": "Phoenix, AZ",
-   "comments": 512,
-   "discussions": 10,
-   "engagement": 655,
-   "lat": 33.4505,
-   "lon": -112.0783
+   "lat": 32.217037,
+   "lon": -110.971338,
+   "date": "2026-06-01",
+   "weight": 1.0
   },
   {
-   "community": "r/Scottsdale",
-   "state": "AZ",
-   "place": "Scottsdale, AZ",
-   "comments": 191,
-   "discussions": 10,
-   "engagement": 263,
-   "lat": 33.4945,
-   "lon": -111.9207
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-05",
+   "weight": 7.0
   },
   {
-   "community": "r/Tempe",
-   "state": "AZ",
-   "place": "Tempe, AZ",
-   "comments": 113,
-   "discussions": 9,
-   "engagement": 140,
-   "lat": 33.4274,
-   "lon": -111.934
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-06",
+   "weight": 9.0
   },
   {
-   "community": "r/Tucson",
-   "state": "AZ",
-   "place": "Tucson, AZ",
-   "comments": 110,
-   "discussions": 14,
-   "engagement": 161,
-   "lat": 32.217,
-   "lon": -110.9713
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-07",
+   "weight": 1.0
   },
   {
-   "community": "r/Flagstaff",
-   "state": "AZ",
-   "place": "Flagstaff, AZ",
-   "comments": 108,
-   "discussions": 9,
-   "engagement": 136,
-   "lat": 35.3577,
-   "lon": -111.7712
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-08",
+   "weight": 27.0
   },
   {
-   "community": "r/Prescott",
-   "state": "AZ",
-   "place": "Prescott, AZ",
-   "comments": 73,
-   "discussions": 9,
-   "engagement": 99,
-   "lat": 34.5981,
-   "lon": -112.4202
+   "lat": 33.42744,
+   "lon": -111.934004,
+   "date": "2026-06-08",
+   "weight": 4.0
   },
   {
-   "community": "r/yuma",
-   "state": "AZ",
-   "place": "Yuma, AZ",
-   "comments": 73,
-   "discussions": 8,
-   "engagement": 89,
-   "lat": 32.7046,
-   "lon": -114.6563
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-09",
+   "weight": 31.0
   },
   {
-   "community": "r/azpolitics",
-   "state": "AZ",
-   "place": "Arizona",
-   "comments": 11,
-   "discussions": 5,
-   "engagement": 11,
-   "lat": null,
-   "lon": null
+   "lat": 33.42744,
+   "lon": -111.934004,
+   "date": "2026-06-09",
+   "weight": 38.0
   },
   {
-   "community": "r/TucsonPolitics",
-   "state": "AZ",
-   "place": "Tucson, AZ",
-   "comments": 1,
-   "discussions": 1,
-   "engagement": 1,
-   "lat": 32.217,
-   "lon": -110.9713
+   "lat": 32.704556,
+   "lon": -114.656304,
+   "date": "2026-06-09",
+   "weight": 2.0
+  },
+  {
+   "lat": 34.598081,
+   "lon": -112.420156,
+   "date": "2026-06-09",
+   "weight": 17.0
+  },
+  {
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-10",
+   "weight": 24.0
+  },
+  {
+   "lat": 33.42744,
+   "lon": -111.934004,
+   "date": "2026-06-10",
+   "weight": 36.0
+  },
+  {
+   "lat": 32.704556,
+   "lon": -114.656304,
+   "date": "2026-06-10",
+   "weight": 38.0
+  },
+  {
+   "lat": 32.217037,
+   "lon": -110.971338,
+   "date": "2026-06-10",
+   "weight": 40.0
+  },
+  {
+   "lat": 34.598081,
+   "lon": -112.420156,
+   "date": "2026-06-10",
+   "weight": 9.0
+  },
+  {
+   "lat": 35.357736,
+   "lon": -111.771155,
+   "date": "2026-06-11",
+   "weight": 9.0
+  },
+  {
+   "lat": 33.42744,
+   "lon": -111.934004,
+   "date": "2026-06-11",
+   "weight": 35.0
+  },
+  {
+   "lat": 32.704556,
+   "lon": -114.656304,
+   "date": "2026-06-11",
+   "weight": 33.0
+  },
+  {
+   "lat": 33.45052,
+   "lon": -112.078343,
+   "date": "2026-06-11",
+   "weight": 512.0
+  },
+  {
+   "lat": 34.598081,
+   "lon": -112.420156,
+   "date": "2026-06-11",
+   "weight": 47.0
+  },
+  {
+   "lat": 32.217037,
+   "lon": -110.971338,
+   "date": "2026-06-11",
+   "weight": 70.0
+  },
+  {
+   "lat": 33.494489,
+   "lon": -111.920714,
+   "date": "2026-06-11",
+   "weight": 191.0
   }
  ]
 }
