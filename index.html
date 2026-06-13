@@ -161,14 +161,16 @@ Promise.all([
     f.style.width = (100 * (b - a) / Math.max(+lo.max, 1)) + "%";
     const inWin = h => h.date >= dates[a] && h.date <= dates[b];
 
-    // Sum window weights per anchor ZIP
-    const byZip = new Map();
+    // Sum window weights per grid cell (heat points are pre-snapped to a ~7mi
+    // grid server-side and keyed by coordinate, so this stays small)
+    const byCell = new Map();
     for (const h of d.heat.filter(inWin)) {
-      const cur = byZip.get(h.zip) || { zip: h.zip, lat: h.lat, lon: h.lon, w: 0 };
+      const key = h.lat + "," + h.lon;
+      const cur = byCell.get(key) || { lat: h.lat, lon: h.lon, w: 0 };
       cur.w += h.weight;
-      byZip.set(h.zip, cur);
+      byCell.set(key, cur);
     }
-    const locs = [...byZip.values()];
+    const locs = [...byCell.values()];
     const maxW = Math.max(...locs.map(p => p.w), 1);
     const traces = [];
 
